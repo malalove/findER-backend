@@ -14,7 +14,6 @@ import javax.persistence.*;
 @NoArgsConstructor
 public class Users extends BaseEntity {
     @Id
-    // @GeneratedValue(strategy = GenerationType.IDENTITY)
     @GeneratedValue(strategy = GenerationType.IDENTITY, generator = "USERS_SEQUENCE_GENERATOR")
     @SequenceGenerator(name = "USERS_SEQUENCE_GENERATOR", sequenceName = "USERS_SQ", initialValue = 1, allocationSize = 1)
     private Long id;
