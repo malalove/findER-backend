@@ -15,16 +15,19 @@ import javax.servlet.http.HttpServletRequest;
 public class UserController {
     private final UserService userService;
 
+    // 회원 가입
     @PostMapping("/signup")
     public ResponseEntity signup(@RequestBody SignUpDto signUpDto) {
         return ResponseEntity.ok(userService.createUser(signUpDto));
     }
 
+    // 이메일 중복 검증
     @GetMapping("/emailValidation")
     public ResponseEntity<Boolean> emailValidation(@RequestParam String email) {
         return ResponseEntity.ok(userService.emailValidation(email));
     }
 
+    // 로그아웃
     @DeleteMapping("/logout")
     public ResponseEntity logout(HttpServletRequest request, @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userService.logout(request.getHeader("Authorization"), userDetails.getUsername()));
