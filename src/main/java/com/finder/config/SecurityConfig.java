@@ -25,10 +25,13 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-public class SecurityConfig {
+public class SecurityConfig { // Spring Security 설정 파일
     private final LoginService loginService;
+
     private final JwtService jwtService;
+
     private final UserRepository userRepository;
+
     private final ObjectMapper objectMapper;
 
     @Bean
@@ -40,17 +43,16 @@ public class SecurityConfig {
                 .headers().frameOptions().disable()
                 .and()
 
-                // 세션 사용하지 않으므로 STATELESS로 설정
+                // 세션을 사용하지 않으므로 stateless로 설정
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
 
-                //== URL별 권한 관리 옵션 ==//
+                // URL 별 권한 관리 옵션
                 .authorizeRequests()
-                // .antMatchers("/","/css/**","/images/**","/js/**","/favicon.ico","/h2-console/**").permitAll()
                 .antMatchers("/","/css/**","/images/**","/js/**","/favicon.ico").permitAll()
-                .antMatchers("/api/signup", "/api/emailValidation").permitAll() // 회원가입, 이메일 중복 검증 => 접근 허용
+                .antMatchers("/api/signup", "/api/emailValidation").permitAll()
                 .antMatchers("/login/oauth2/code/**").permitAll()
-                .anyRequest().authenticated(); // 위의 경로 이외에는 모두 인증된 사용자만 접근 가능
+                .anyRequest().authenticated();
 
         // LogoutFilter -> JwtAuthenticationProcessingFilter -> CustomJsonUsernamePasswordAuthenticationFilter
         http.addFilterAfter(customJsonUsernamePasswordAuthenticationFilter(), LogoutFilter.class);
@@ -68,8 +70,9 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setPasswordEncoder(passwordEncoder()); // PasswordEncoder 등록
-        provider.setUserDetailsService(loginService); // 커스텀 UserDetailsService 등록
+        provider.setPasswordEncoder(passwordEncoder());
+        provider.setUserDetailsService(loginService);
+
         return new ProviderManager(provider);
     }
 
@@ -90,9 +93,10 @@ public class SecurityConfig {
     public CustomJsonUsernamePasswordAuthenticationFilter customJsonUsernamePasswordAuthenticationFilter() {
         CustomJsonUsernamePasswordAuthenticationFilter customJsonUsernamePasswordLoginFilter
                 = new CustomJsonUsernamePasswordAuthenticationFilter(objectMapper);
-        customJsonUsernamePasswordLoginFilter.setAuthenticationManager(authenticationManager()); // AuthenticationManager 등록
-        customJsonUsernamePasswordLoginFilter.setAuthenticationSuccessHandler(loginSuccessHandler()); // AuthenticationSuccessHandler 등록
-        customJsonUsernamePasswordLoginFilter.setAuthenticationFailureHandler(loginFailureHandler()); // AuthenticationFailureHandler 등록
+        customJsonUsernamePasswordLoginFilter.setAuthenticationManager(authenticationManager());
+        customJsonUsernamePasswordLoginFilter.setAuthenticationSuccessHandler(loginSuccessHandler());
+        customJsonUsernamePasswordLoginFilter.setAuthenticationFailureHandler(loginFailureHandler());
+
         return customJsonUsernamePasswordLoginFilter;
     }
 
@@ -100,6 +104,7 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationProcessingFilter jwtAuthenticationProcessingFilter() {
         JwtAuthenticationProcessingFilter jwtAuthenticationFilter = new JwtAuthenticationProcessingFilter(jwtService, userRepository);
+
         return jwtAuthenticationFilter;
     }
 }

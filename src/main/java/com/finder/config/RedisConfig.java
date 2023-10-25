@@ -13,8 +13,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @RequiredArgsConstructor
 @Configuration
 @EnableRedisRepositories
-public class RedisConfig {
-
+public class RedisConfig { // Redis 설정 파일
     @Value("${spring.redis.port}")
     private int port;
 
