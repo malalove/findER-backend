@@ -20,16 +20,26 @@ public class KakaoMobilityService {
     @Value("${kakao.key}")
     private String REST_KEY;
     private Map<String, String> map = new HashMap<>();
+    private JSONObject jsonObject = new JSONObject();
 
     public Map<String, String> requestKakaoMobilityApi(Double originLat, Double originLon, Double destinationLat, Double destinationLon) {
         String urlStr =
                 "https://apis-navi.kakaomobility.com/v1/directions?origin=" + originLon + "," + originLat +
                         "&destination=" + destinationLon + "," + destinationLat +
                         "&waypoints=&priority=RECOMMEND&car_fuel=GASOLINE&car_hipass=false&alternatives=false&road_details=false";
-        BufferedReader br = null;
-        JSONObject jsonObject = new JSONObject();
-        ObjectMapper mapper = new ObjectMapper();
 
+        // API 요청
+        requestAPI(urlStr);
+        // 응답 데이터에서 거리, 도착 예정 시간 정보 매핑
+        responseMapping();
+
+        return map;
+    }
+
+    // API 요청
+    private void requestAPI(String urlStr) {
+        BufferedReader br = null;
+        ObjectMapper mapper = new ObjectMapper();
         try {
             URL url = new URL(urlStr);
 
@@ -49,8 +59,10 @@ public class KakaoMobilityService {
                 e.printStackTrace();
             }
         }
+    }
 
-
+    // 응답 데이터에서 거리, 도착 예정 시간 정보 매핑
+    private void responseMapping() {
         ArrayList<LinkedHashMap> routes = (ArrayList)jsonObject.get("routes");
         LinkedHashMap routesMap = routes.get(0);
         LinkedHashMap summaryMap = (LinkedHashMap) routesMap.get("summary");
@@ -61,12 +73,10 @@ public class KakaoMobilityService {
 
         // 거리, 도착 예정 시간 조회
         calcalate(distance, duration);
-
-        return map;
     }
 
     // 거리, 도착 예정 시간 조회
-    public void calcalate(Double distance, Integer duration) {
+    private void calcalate(Double distance, Integer duration) {
         distance = Math.round((distance / 1000) * 10.0) / 10.0;
 
         LocalDateTime now = LocalDateTime.now();
