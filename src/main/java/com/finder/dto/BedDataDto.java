@@ -7,13 +7,13 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class BedDataDto {
-    String successTime;
+    private String successTime;
 
-    double percent;
+    private Double percent;
 
-    double otherPercent;
+    private Double otherPercent;
 
-    List<Integer> twoAgoList;
+    private List<Integer> twoAgoList;
 
-    List<Integer> oneAgoList;
+    private List<Integer> oneAgoList;
 }
