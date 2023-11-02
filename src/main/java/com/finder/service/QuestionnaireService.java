@@ -37,21 +37,7 @@ public class QuestionnaireService {
             }
         }
 
-        Questionnaire questionnaire = Questionnaire.builder()
-                .user(userRepository.findByEmail(email).get())
-                .name(questionnaireDto.getName())
-                .birthday(questionnaireDto.getBirthday())
-                .familyRelations(questionnaireDto.getFamilyRelations())
-                .phoneNum(questionnaireDto.getPhoneNum())
-                .address(questionnaireDto.getAddress())
-                .gender(questionnaireDto.getGender())
-                .bloodType(questionnaireDto.getBloodType())
-                .allergy(questionnaireDto.getAllergy())
-                .medicine(questionnaireDto.getMedicine())
-                .smokingCycle(questionnaireDto.getSmokingCycle())
-                .drinkingCycle(questionnaireDto.getDrinkingCycle())
-                .etc(questionnaireDto.getEtc())
-                .build();
+        Questionnaire questionnaire = Questionnaire.convertToQuestionnaire(questionnaireDto, userRepository.findByEmail(email).get());
 
         questionnaireRepository.save(questionnaire);
 
@@ -65,13 +51,9 @@ public class QuestionnaireService {
 
         if (Objects.equals(user, linkedUser)) {
             return "본인의 이메일은 입력할 수 없습니다.";
-        }
-
-        if (user.isEmpty() || linkedUser.isEmpty()) {
+        } else if (user.isEmpty() || linkedUser.isEmpty()) {
             return "사용자를 찾을 수 없습니다.";
-        }
-
-        if (linkRepository.findByAllId(user.get().getId(), linkedUser.get().getId()).isPresent()) {
+        } else if (linkRepository.findByAllId(user.get().getId(), linkedUser.get().getId()).isPresent()) {
             return "이미 연동 상태입니다.";
         }
 
@@ -95,8 +77,8 @@ public class QuestionnaireService {
             Long myId = user.get().getId();
             Long otherId = linkedUser.get().getId();
 
-            long startTime = System.currentTimeMillis();
-            long endTime = startTime + 3 * 60 * 1000;
+            Long startTime = System.currentTimeMillis();
+            Long endTime = startTime + 3 * 60 * 1000;
 
             while (System.currentTimeMillis() < endTime) {
                 if (linkRepository.findByAllId(myId, otherId).isEmpty()) {
