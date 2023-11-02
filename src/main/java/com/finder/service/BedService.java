@@ -6,11 +6,9 @@ import com.finder.repository.BedRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -19,119 +17,116 @@ import java.util.List;
 public class BedService {
     private final BedRepository bedRepository;
 
+    // 현재 시간 기준 응급실 병상 수 조회
     public Integer findByNameAndTime(String name) {
         LocalDateTime now = LocalDateTime.now().minusMinutes(1);
         Bed bed = bedRepository.findByNameAndTime(name, now);
-        if(bed == null) bed = bedRepository.findByNameAndTime(name, now.minusMinutes(1));
-        if(bed == null) return 0; // 기존 시간, 1분전 모두 데이터가 없을 경우 0 반환
+        bed = (bed == null) ? bedRepository.findByNameAndTime(name, now.minusMinutes(1)) : bed;
 
-        System.out.println(now.getHour() + ":" + now.getMinute());
-        return bed.getCount();
+        return (bed == null) ? 0 : bed.getCount();
     }
 
-    // 병상수 관련 최근 데이터 조회
-    public BedDataDto findByRecentV2(String name) {
+    // 최근 2시간 기준 응급실 병상 수 조회
+    public BedDataDto findByRecent(String name) {
         LocalDateTime currentTime = LocalDateTime.now().minusMinutes(1);
-        LocalDateTime before2Time = currentTime.minusHours(2);
-        System.out.println("currTime = "  + currentTime.getHour() + " : " + currentTime.getMinute());
+        LocalDateTime twoHourAgoTime = currentTime.minusHours(2);
 
-        // 현재 시간의 2시간 전부터 현재 시간까지의 Bed 데이터
-        List<Bed> twoAgoBeds = bedRepository.findByRecent(name, before2Time, currentTime);
+        // 최근 2시간 기준 병상 수 데이터
+        List<Bed> twoHourAgoBeds = bedRepository.findByRecent(name, twoHourAgoTime, currentTime);
 
-        // 시간 순 정렬
-        Collections.sort(twoAgoBeds, new Comparator<Bed>() {
-            @Override
-            public int compare(Bed o1, Bed o2) {
-                return o1.getLocalDateTime().compareTo(o2.getLocalDateTime());
+        // 시간 순 오름차순 정렬
+        Collections.sort(twoHourAgoBeds, (Bed o1, Bed o2) -> o1.getLocalDateTime().compareTo(o2.getLocalDateTime()));
+
+        // 병상 이용 가능 시간(분) 조회
+        Integer totalMinute = getTotalMinute(twoHourAgoBeds);
+        // 병상 이용 가능 시간 문자열 매핑
+        String availableTime = availableTimeToStringMap(totalMinute);
+        // 병상 이용 가능 시간 비율 매핑
+        Double percent = availableTimeToPercent(totalMinute);
+        Double otherPercent = Math.round((100 - percent) * 10.0) / 10.0;
+
+        // 최근 2시간 기준 15분 간격 병상 수 조회
+        List<Integer> bedIntervalList = getBedIntervalList(twoHourAgoBeds);
+
+        // 트래커 미 실행 시
+        if(bedIntervalList.size() < 8) {
+            Integer size = bedIntervalList.size();
+            for (int i = 0; i <= 8 - size; i++) {
+                bedIntervalList.add(0);
             }
-        });
+        } else if(bedIntervalList.size() == 8) { // 현재 시간 데이터가 비어있을 때
+            // 최근 병상 수 저장
+            bedIntervalList.add(Math.max(0, twoHourAgoBeds.get(twoHourAgoBeds.size() - 1).getCount()));
+        }
 
-        // 병상 이용가능 했던 시간
-        System.out.println("twoAgoBeds = " + twoAgoBeds.size());
-        int count = 0;
-        int size = twoAgoBeds.size();
-        LocalDateTime pre = null;
-        if(size > 0) pre = twoAgoBeds.get(0).getLocalDateTime().minusMinutes(1);
+        return new BedDataDto(availableTime, percent, otherPercent, bedIntervalList);
+    }
+
+    // 병상을 이용 가능했던 시간 조회 (분 단위)
+    private Integer getTotalMinute(List<Bed> twoAgoBeds) {
+        Integer totalMinute = 0;
+        Integer size = twoAgoBeds.size();
+        LocalDateTime oneMinuteAgo = (size > 0) ? twoAgoBeds.get(0).getLocalDateTime().minusMinutes(1) : null;
 
         for (int i = 0; i < size; i++) {
             Bed bed = twoAgoBeds.get(i);
-            if(bed.getLocalDateTime().equals(pre.plusMinutes(1))) {
-                if(bed.getCount() > 0) count += 1;
-            } else { // 중간이 빈 경우
-                if (i - 1 > 0) {
-                    if(twoAgoBeds.get(i - 1).getCount() > 0) count +=1;
-                    if(bed.getCount() > 0) count += 1;
-                }
+            if (localDateTimeEq(bed.getLocalDateTime(), oneMinuteAgo.plusMinutes(1)) && bed.getCount() > 0) {
+                totalMinute += 1;
+            } else if (i - 1 > 0) { // 중간에 데이터가 없을 경우
+                // 2분 전 병상 수 저장
+                if(twoAgoBeds.get(i - 1).getCount() > 0) totalMinute +=1;
+                // 현재 병상 수 저장
+                if(bed.getCount() > 0) totalMinute += 1;
             }
-            pre = bed.getLocalDateTime();
+            oneMinuteAgo = bed.getLocalDateTime();
         }
 
-        int hour = count / 60;
-        int minute = count - (hour * 60);
-        String successTime = hour + "시간 " + minute + "분"; // output
-        System.out.println("count = " + count);
-        double percent = (count / 120.) * 100; // output
-        double otherPercent = 100 - percent; // output
+        return totalMinute;
+    }
 
-        // 소수점 첫째 자리까지 반올림
+    private String availableTimeToStringMap(Integer totalMinute) {
+        Integer hour = totalMinute / 60;
+        Integer minute = totalMinute % 60;
+
+        return String.format("%d시간 %d분", hour, minute);
+    }
+
+    private Double availableTimeToPercent(Integer totalMinute) {
+        Double percent = (totalMinute / 120.) * 100;
         percent = Math.round(percent * 10.0) / 10.0;
-        otherPercent = Math.round(otherPercent * 10.0) / 10.0;
 
-        int curHour = 0;
-        int curMin = 0;
-        if(twoAgoBeds.size() > 0) {
-            curHour = twoAgoBeds.get(0).getLocalDateTime().getHour(); // 현재 시간의 2시간 전 Hour
-            curMin = twoAgoBeds.get(0).getLocalDateTime().getMinute(); // 현재 시간의 Minute
-        }
+        return percent;
+    }
 
-        List<Integer> twoAgoList = new ArrayList<>();
+    // 최근 2시간 기준 15분 간격 병상 수 조회
+    private List<Integer> getBedIntervalList(List<Bed> twoAgoBeds) {
+        LocalDateTime currentTime = (twoAgoBeds.size() > 0) ? twoAgoBeds.get(0).getLocalDateTime() : null;
+        Integer size = twoAgoBeds.size();
+        List<Integer> bedIntervalList = new ArrayList<>();
+
         for (int i = 0; i < size; i++) {
             Bed bed = twoAgoBeds.get(i);
-            LocalDateTime lt = bed.getLocalDateTime().minusMinutes(1);
-            if(curHour == lt.getHour() && curMin == lt.getMinute()) {
-                if (i - 1 >= 0) { // 이전 데이터가 있는 경우
-                    if(twoAgoBeds.get(i - 1).getLocalDateTime().equals(lt.minusMinutes(1))) { // 1분전 데이터가 있는 경우
-                        if (twoAgoBeds.get(i - 1).getCount() < 0) twoAgoList.add(0);
-                        else twoAgoList.add(twoAgoBeds.get(i - 1).getCount());
-                        System.out.println(twoAgoBeds.get(i - 1).getLocalDateTime().getHour() + " || " + twoAgoBeds.get(i - 1).getLocalDateTime().getMinute());
-                    } else twoAgoList.add(0);
-                } else { // 이전 데이터가 없는 경우
-                    twoAgoList.add(0);
-                }
+            LocalDateTime oneMinuteAgo = bed.getLocalDateTime().minusMinutes(1);
 
-                System.out.println("빈 데이터 => " + curHour + ":" + curMin);
-                curMin += 15;
-                if(curMin>=60) {
-                    curMin -= 60;
-                    curHour += 1;
-                    if(curHour == 24) curHour = 0;
-                }
+            // 중간에 데이터가 없을 경우
+            if(localDateTimeEq(oneMinuteAgo, currentTime)) {
+                if((i - 1 >= 0) && localDateTimeEq(twoAgoBeds.get(i - 1).getLocalDateTime(), oneMinuteAgo.minusMinutes(1))) { // 1분 전 데이터가 있는 경우
+                    bedIntervalList.add(Math.max(0, twoAgoBeds.get(i - 1).getCount()));
+                } else bedIntervalList.add(0); // 1분 전 데이터가 없을 경우
+                currentTime = currentTime.plusMinutes(15);
             }
-            if(bed.getLocalDateTime().getHour() == curHour && bed.getLocalDateTime().getMinute() == curMin) {
-                if(bed.getCount() < 0) twoAgoList.add(0);
-                else twoAgoList.add(bed.getCount());
-                System.out.println(curHour + ":" + curMin);
-                curMin += 15;
-                if(curMin>=60) {
-                    curMin -= 60;
-                    curHour += 1;
-                    if(curHour == 24) curHour = 0;
-                }
+
+            // 데이터가 있는 경우
+            if(localDateTimeEq(bed.getLocalDateTime(), currentTime)) {
+                bedIntervalList.add(Math.max(0, bed.getCount()));
+                currentTime = currentTime.plusMinutes(15);
             }
         }
 
-        if(twoAgoList.size() < 8) { // 데이터가 부족한 경우
-            int s = twoAgoList.size();
-            for (int i = 0; i <= 8 - s; i++) twoAgoList.add(0);
-        } else if(twoAgoList.size() == 8) {
-            Integer count1 = twoAgoBeds.get(twoAgoBeds.size() - 1).getCount();
-            if(count1 < 0) twoAgoList.add(0);
-            else twoAgoList.add(count1);
+        return bedIntervalList;
+    }
 
-            LocalDateTime time = twoAgoBeds.get(twoAgoBeds.size() - 1).getLocalDateTime();
-            System.out.println("\n" + time.getHour() + ":" + time.getMinute());
-        }
-
-        return new BedDataDto(successTime, percent, otherPercent, twoAgoList,  null);
+    private Boolean localDateTimeEq(LocalDateTime t1, LocalDateTime t2) {
+        return (t1.getHour() == t2.getHour() && t1.getMinute() == t2.getMinute()) ? true : false;
     }
 }

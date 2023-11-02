@@ -14,6 +14,4 @@ public class BedDataDto {
     private Double otherPercent;
 
     private List<Integer> twoAgoList;
-
-    private List<Integer> oneAgoList;
 }
