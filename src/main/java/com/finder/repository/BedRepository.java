@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface BedRepository extends JpaRepository<Bed, BedId> {
-
     @Query(value = "select b from Bed b where b.name = :name " +
             "and EXTRACT(YEAR FROM b.localDateTime) = EXTRACT(YEAR FROM :time) " +
             "and EXTRACT(MONTH FROM b.localDateTime) = EXTRACT(MONTH FROM :time) " +

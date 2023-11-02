@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-public class Bed extends BaseEntity{
+public class Bed extends BaseEntity {
     @Id
     private String name;
 

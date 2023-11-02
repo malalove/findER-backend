@@ -10,7 +10,7 @@ import javax.persistence.*;
 @NoArgsConstructor
 @Getter
 @Setter
-public class Questionnaire extends BaseEntity{
+public class Questionnaire extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY, generator = "QUESTIONNAIRE_SEQUENCE_GENERATOR")
     @SequenceGenerator(name = "QUESTIONNAIRE_SEQUENCE_GENERATOR", sequenceName = "QUESTIONNAIRE_SQ", initialValue = 1, allocationSize = 1)
