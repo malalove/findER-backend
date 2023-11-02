@@ -4,14 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.stereotype.Component;
-
 import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor
 public class RedisUtil {
-
     private final RedisTemplate<String, Object> redisTemplate;
+
     private final RedisTemplate<String, Object> redisBlackListTemplate;
 
     public void set(String key, Object o, int minutes) {
