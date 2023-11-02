@@ -1,5 +1,6 @@
 package com.finder.domain;
 
+import com.finder.dto.QuestionnaireDto;
 import lombok.*;
 import javax.persistence.*;
 
@@ -42,4 +43,22 @@ public class Questionnaire extends BaseEntity{
     private String drinkingCycle;
 
     private String etc;
+
+    public static Questionnaire convertToQuestionnaire(QuestionnaireDto questionnaireDto, Users user) {
+        return Questionnaire.builder()
+                .user(user)
+                .name(questionnaireDto.getName())
+                .birthday(questionnaireDto.getBirthday())
+                .familyRelations(questionnaireDto.getFamilyRelations())
+                .phoneNum(questionnaireDto.getPhoneNum())
+                .address(questionnaireDto.getAddress())
+                .gender(questionnaireDto.getGender())
+                .bloodType(questionnaireDto.getBloodType())
+                .allergy(questionnaireDto.getAllergy())
+                .medicine(questionnaireDto.getMedicine())
+                .smokingCycle(questionnaireDto.getSmokingCycle())
+                .drinkingCycle(questionnaireDto.getDrinkingCycle())
+                .etc(questionnaireDto.getEtc())
+                .build();
+    }
 }
