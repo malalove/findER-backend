@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+
     private final PasswordEncoder passwordEncoder;
+
     private final RedisUtil redisUtil;
 
     @Transactional
@@ -29,20 +31,21 @@ public class UserService {
 
         user.passwordEncode(passwordEncoder);
         userRepository.save(user);
+
         return "사용자 생성 완료";
     }
 
     @Transactional
     public String logout(String accessToken, String email) {
         Users user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("찾으시는 사용자가 존재하지 않습니다."));
+                .orElseThrow(() -> new RuntimeException("해당 사용자가 존재하지 않습니다."));
         user.updateRefreshToken(null);
         redisUtil.setBlackList(accessToken, "accessToken", 3);
+
         return "로그아웃 완료";
     }
 
     public Boolean emailValidation(String email) {
-        if(userRepository.findByEmail(email).isPresent()) return false;
-        else return true;
+        return (userRepository.findByEmail(email).isPresent()) ? false : true;
     }
 }
