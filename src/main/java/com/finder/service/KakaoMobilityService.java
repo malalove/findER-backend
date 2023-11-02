@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -19,7 +18,9 @@ import java.util.Map;
 public class KakaoMobilityService {
     @Value("${kakao.key}")
     private String REST_KEY;
+
     private Map<String, String> map = new HashMap<>();
+
     private JSONObject jsonObject = new JSONObject();
 
     public Map<String, String> requestKakaoMobilityApi(Double originLat, Double originLon, Double destinationLat, Double destinationLon) {
@@ -30,7 +31,8 @@ public class KakaoMobilityService {
 
         // API 요청
         requestAPI(urlStr);
-        // 응답 데이터에서 거리, 도착 예정 시간 정보 매핑
+
+        // 응답 데이터 내 거리, 도착 예정 시간 정보 매핑
         responseMapping();
 
         return map;
@@ -45,9 +47,10 @@ public class KakaoMobilityService {
 
             // API 요청
             URLConnection conn = url.openConnection();
-            conn.setRequestProperty("Authorization", "KakaoAK " + REST_KEY); // 인증키 등록
+            // 인증키 등록
+            conn.setRequestProperty("Authorization", "KakaoAK " + REST_KEY);
 
-            //응답값 뽑아서 JSONObject로 변환
+            // 응답 데이터를 JSONObject로 변환
             br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             if(br != null) jsonObject = mapper.readValue(br, JSONObject.class);
         } catch (Exception e) {
@@ -61,9 +64,9 @@ public class KakaoMobilityService {
         }
     }
 
-    // 응답 데이터에서 거리, 도착 예정 시간 정보 매핑
+    // 응답 데이터 내 거리, 도착 예정 시간 정보 매핑
     private void responseMapping() {
-        ArrayList<LinkedHashMap> routes = (ArrayList)jsonObject.get("routes");
+        ArrayList<LinkedHashMap> routes = (ArrayList) jsonObject.get("routes");
         LinkedHashMap routesMap = routes.get(0);
         LinkedHashMap summaryMap = (LinkedHashMap) routesMap.get("summary");
 
@@ -72,28 +75,35 @@ public class KakaoMobilityService {
         Integer duration = (Integer) summaryMap.get("duration");
 
         // 거리, 도착 예정 시간 조회
-        calcalate(distance, duration);
+        calculate(distance, duration);
     }
 
     // 거리, 도착 예정 시간 조회
-    private void calcalate(Double distance, Integer duration) {
+    private void calculate(Double distance, Integer duration) {
+        LocalDateTime now = LocalDateTime.now();
+        int minute = duration / 60;
+        int arriveHour = now.getHour();
+        int arriveMinute = now.getMinute() + minute;
+
+        if (arriveMinute >= 60) {
+            arriveHour += (arriveMinute / 60);
+            arriveMinute = (arriveMinute % 60);
+        }
+
+        String arriveTime;
+        if(arriveHour >= 24) {
+            arriveHour -= 24;
+            arriveTime = String.format("오전 %d시 %d분", arriveHour, arriveMinute);
+        } else if (arriveHour >= 12) {
+            arriveTime = (arriveHour == 12) ? String.format("오후 %d시 %d분", arriveHour, arriveMinute)
+                    : String.format("오후 %d시 %d분", arriveHour - 12, arriveMinute);
+        } else {
+            arriveTime = String.format("오전 %d시 %d분", arriveHour, arriveMinute);
+        }
+
         distance = Math.round((distance / 1000) * 10.0) / 10.0;
 
-        LocalDateTime now = LocalDateTime.now();
-        int minute = duration/60;
-        int arriveHour = now.getHour();;
-        int arriveminute = now.getMinute() + minute;
-        if(arriveminute >= 60) {
-            arriveHour += (arriveminute / 60);
-            arriveminute = (arriveminute % 60);
-        }
-        String arriveTime;
-        if (arriveHour>=12) {
-            if(arriveHour == 12) arriveTime = "오후 " + arriveHour + "시 " + arriveminute + "분";
-            else arriveTime = "오후 " + (arriveHour-12) + "시 " + arriveminute + "분";
-        } else arriveTime = "오전 " + arriveHour + "시 " + arriveminute + "분";
-
-        map.put("distance", distance + "");
+        map.put("distance", distance.toString());
         map.put("arriveTime", arriveTime);
     }
 }
